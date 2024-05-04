@@ -188,4 +188,6 @@ pyrightconfig.json
 
 **/*.zip
 
-**/*.out.*
+**/events*
+
+logs
