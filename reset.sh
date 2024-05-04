@@ -1,0 +1,1 @@
+rm -rf tensorboard_logs logs script_logs

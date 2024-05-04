@@ -2,14 +2,14 @@
 #SBATCH --job-name=NetworkEnv
 #SBATCH --output=script_logs/%x_%j_output.log
 #SBATCH --error=script_logs/%x_%j_error.log
-#SBATCH -G 4 -C ampere
+#SBATCH -G 4
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=sj1030@rutgers.edu
 
 echo "Starting job $SLURM_JOB_ID"
 set -e
 
-cd ~/Projects/SCR/NetworkSwarm
+cd ~/Projects/swarm-network-coverage
 
 source /common/home/sj1030/miniconda3/etc/profile.d/conda.sh
 
@@ -52,7 +52,7 @@ print_time_elapsed &
 # Save the process ID of the background function
 TIME_ELAPSED_PID=$!
 
-python -m run.py > script_logs/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_python.log 2>&1 &
+python run.py > script_logs/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_python.log 2>&1 &
 
 echo $!
 wait $!
