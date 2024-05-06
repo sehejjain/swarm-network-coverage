@@ -312,8 +312,8 @@ class NetworkEnv(gym.Env):
         if self.ep >= self.max_ep_len:
             terminated = True
 
-            if coverage_ratio >= self.bonus_threshold:
-                reward += self.bonus_reward
+        if coverage_ratio >= self.bonus_threshold and is_contiguous:
+            reward += self.bonus_reward
                 
                 
         return reward, terminated, final_coverage, is_contiguous, coverage_ratio
