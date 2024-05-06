@@ -39,6 +39,7 @@ class NetworkEnv(gym.Env):
         bonus_threshold: float = 0.9,
         bonus_reward: float = 1000,
         overlap_threshold=0.1,
+        train: bool = True,
     ):
         """
         Initializes the NetworkEnv object.
@@ -59,7 +60,8 @@ class NetworkEnv(gym.Env):
         - overlap_threshold (float, optional): Area threshold for overlap. Defaults to 0.1.
         """
         super(NetworkEnv, self).__init__()
-        self.robots = np.zeros((n, 2), dtype=float)
+        self.train=train
+        self.robots = np.zeros((n, 2), dtype=float) if not train else np.random.randint(0, x[1], (n, 2))
         self.min_x = x[0]
         self.max_x = x[1]
         self.min_y = y[0]
@@ -217,18 +219,15 @@ class NetworkEnv(gym.Env):
             )
 
         # Enhance the plot with titles, labels, and a legend
-        ax.set_title("Drone Coverage Visualization")
-        ax.set_xlabel("X coordinates")
-        ax.set_ylabel("Y coordinates")
         # ax.legend()
         ax.grid(True)
         ax.set_xlim(self.min_x, self.max_x)
         ax.set_ylim(self.min_y, self.max_y)
-        ax.set_aspect("equal", adjustable="datalim")
+        # ax.set_aspect("equal", adjustable="datalim")
         # ax.axis('off')
         # Display or return the plot based on the rendering mode
         buf = io.BytesIO()
-        fig.savefig(buf, format="png")
+        fig.savefig(buf, format="png", dpi=100,bbox_inches='tight')
         buf.seek(0)
         im = PIL.Image.open(buf)
         plt.close(fig)  # Close the figure to free memory
@@ -242,29 +241,17 @@ class NetworkEnv(gym.Env):
 
     def reset(self, **kwargs):
         super().reset(**kwargs)
-        self.robots = np.zeros((self.n, 2))
+        
+        self.robots = np.zeros((self.n, 2), dtype=float) if not self.train else np.random.randint(0, self.max_x, (self.n, 2))
         self.previous_area_covered = 0
         self.ep = 0
         self.coverage_ratio = 0
         return self.get_obs(), {}
 
-    def step(self, action):
-        self.ep += 1
+
+    def get_reward(self):
         terminated = False
-
         reward = 0
-        if len(action) != self.n:
-            raise ValueError("Action must be of length n")
-
-        for i in range(self.n):
-            if action[i] not in self.directions:
-                raise ValueError("Invalid action")
-            self.robots[i] = self.robots[i] + self.step_size * np.array(
-                self.directions[action[i]]
-            ) / (np.linalg.norm(self.directions[action[i]]) + 1e-16)
-            self.robots[i] = np.clip(
-                self.robots[i], [self.min_x, self.min_y], [self.max_x, self.max_y]
-            )
         overlap_penalty = 0
         coverage = [Point(self.robots[i]).buffer(self.radius) for i in range(self.n)]
         union_of_coverage = coverage[0]
@@ -282,7 +269,11 @@ class NetworkEnv(gym.Env):
                         overlap_penalty += overlap_area / coverage_i.area
 
         # Check if the coverage is contiguous (single polygon without holes)
-        is_contiguous = union_of_coverage.is_simple and union_of_coverage.is_valid
+        if union_of_coverage.geom_type == "MultiPolygon":
+            if len(list(union_of_coverage.geoms))!=0:
+                is_contiguous = False
+        else:
+            is_contiguous = True
 
         # Calculate the area of the union and the intersection with the environment boundaries
 
@@ -323,7 +314,31 @@ class NetworkEnv(gym.Env):
 
             if coverage_ratio >= self.bonus_threshold:
                 reward += self.bonus_reward
+                
+                
+        return reward, terminated, final_coverage, is_contiguous, coverage_ratio
+        
+        
+        
+    def step(self, action):
+        self.ep += 1
+        
 
+        reward = 0
+        if len(action) != self.n:
+            raise ValueError("Action must be of length n")
+
+        for i in range(self.n):
+            if action[i] not in self.directions:
+                raise ValueError("Invalid action")
+            self.robots[i] = self.robots[i] + self.step_size * np.array(
+                self.directions[action[i]]
+            ) / (np.linalg.norm(self.directions[action[i]]) + 1e-16)
+            self.robots[i] = np.clip(
+                self.robots[i], [self.min_x, self.min_y], [self.max_x, self.max_y]
+            )
+        
+        reward, terminated, final_coverage, is_contiguous, coverage_ratio = self.get_reward()
         return (
             self.get_obs(),
             reward,
