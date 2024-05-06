@@ -2,7 +2,7 @@
 #SBATCH --job-name=NetworkEnv
 #SBATCH --output=script_logs/%x_%j_output.log
 #SBATCH --error=script_logs/%x_%j_error.log
-#SBATCH -G 4
+#SBATCH -G 1 -C a4500
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=sj1030@rutgers.edu
 
